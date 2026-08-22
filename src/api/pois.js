@@ -80,25 +80,24 @@ out center;
 }
 
 async function fetchOverpassJson(query, { signal } = {}) {
-  // 1. Zjistíme, jestli běžíme lokálně nebo na Netlify
+  // Rozpoznáme, jestli jsme u vás na PC, nebo na Netlify
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  // 2. Použijeme správnou cestu
-  const endpoint = isLocal ? 'https://overpass-api.de/api/interpreter' : '/api/overpass';
+  // Pro Netlify použijeme corsproxy.io, která ochranu Overpassu spolehlivě obejde
+  const baseUrl = 'https://overpass-api.de/api/interpreter';
+  const endpoint = isLocal ? baseUrl : `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`;
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        // Tady vracíme tu klíčovou hlavičku!
-        "Accept": "application/json"
+        "Content-Type": "application/x-www-form-urlencoded"
       },
-      // Dotaz posíláme surově, aby se proxy Netlify nezamotala do překódování znaků
-      body: query,
+      body: "data=" + encodeURIComponent(query),
       signal
     });
     
-    if (response.status === 429) {
+    if (response.status === 429 || response.status === 502 || response.status === 504) {
       throw new Error('OpenStreetMap je právě přetížený. Zkuste to za chvíli znovu.');
     }
     if (!response.ok) {
