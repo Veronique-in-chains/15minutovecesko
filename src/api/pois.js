@@ -84,14 +84,14 @@ async function fetchOverpassJson(query, { signal } = {}) {
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
-      // TADY PROBĚHLA ZMĚNA: Přepisujeme GET na POST a data schováváme do těla (body)
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: "data=" + encodeURIComponent(query),
-        signal: signal // Zachováváme i váš původní signal pro správné ukončení
+        signal
       })
       
       lastStatus = response.status
