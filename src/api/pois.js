@@ -80,19 +80,21 @@ out center;
 }
 
 async function fetchOverpassJson(query, { signal } = {}) {
-  // 1. Zjistíme, jestli aplikaci spouštíte u sebe na počítači (localhost)
+  // 1. Zjistíme, jestli běžíme lokálně nebo na Netlify
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  // 2. Na Netlify použijeme naši novou proxy, u vás lokálně půjdeme přímo na Overpass
+  // 2. Použijeme správnou cestu
   const endpoint = isLocal ? 'https://overpass-api.de/api/interpreter' : '/api/overpass';
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        // Tady vracíme tu klíčovou hlavičku!
+        "Accept": "application/json"
       },
-      body: "data=" + encodeURIComponent(query),
+      // Dotaz posíláme surově, aby se proxy Netlify nezamotala do překódování znaků
+      body: query,
       signal
     });
     
