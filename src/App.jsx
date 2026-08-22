@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import AddressSearch from './components/AddressSearch'
+import LocateButton from './components/LocateButton'
 import Map from './components/Map'
 import ScorePanel from './components/ScorePanel'
 import { fetchWalkIsochrone, WALK_MINUTES } from './api/isochrone'
@@ -14,7 +16,7 @@ function App() {
   const [error, setError] = useState(null)
   const abortRef = useRef(null)
 
-  const handleMapClick = async (latlng) => {
+  const runAnalysis = async (latlng) => {
     const point = { lat: latlng.lat, lng: latlng.lng }
     setSelectedPoint(point)
     setIsochrone(null)
@@ -60,11 +62,19 @@ function App() {
 
   return (
     <div className="flex h-svh flex-col">
-      <header className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-900">15minutové Česko</h1>
-        <p className="text-sm text-gray-600">
-          Klikněte do mapy pro izochronu {WALK_MINUTES} minut chůze a skóre vybavenosti
-        </p>
+      <header className="border-b border-gray-200 bg-white px-4 py-4 shadow-sm md:px-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">15minutové Česko</h1>
+            <p className="text-sm text-gray-600">
+              Vyhledejte adresu, použijte polohu nebo klikněte do mapy
+            </p>
+          </div>
+          <div className="flex w-full items-start gap-2 md:max-w-lg">
+            <AddressSearch onSelect={runAnalysis} />
+            <LocateButton onLocated={runAnalysis} onError={setError} />
+          </div>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -73,7 +83,7 @@ function App() {
             origin={selectedPoint}
             geoJson={isochrone}
             pois={pois}
-            onMapClick={handleMapClick}
+            onMapClick={runAnalysis}
           />
 
           {(loadingMessage || error) && (

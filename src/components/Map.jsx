@@ -4,17 +4,32 @@ import {
   CircleMarker,
   GeoJSON,
   MapContainer,
+  Marker,
   Popup,
   TileLayer,
   useMap,
   useMapEvents,
 } from 'react-leaflet'
 import { CATEGORY_BY_ID } from '../score'
+import { CZ_CENTER, DEFAULT_ZOOM } from '../geo/czech'
 
-/** Geographic center of the Czech Republic (near Čáslav). */
-export const CZ_CENTER = [49.8175, 15.473]
-
-export const DEFAULT_ZOOM = 7
+const originIcon = L.divIcon({
+  className: 'origin-marker',
+  iconSize: [32, 42],
+  iconAnchor: [16, 40],
+  popupAnchor: [0, -36],
+  html: `
+    <svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true">
+      <path
+        d="M16 1.5c-7.2 0-13 5.8-13 13 0 9.7 13 25.5 13 25.5S29 24.2 29 14.5c0-7.2-5.8-13-13-13z"
+        fill="#0f172a"
+        stroke="#fff"
+        stroke-width="2.5"
+      />
+      <circle cx="16" cy="14.5" r="5" fill="#fff" />
+    </svg>
+  `,
+})
 
 const ISOCHRONE_STYLE = {
   color: '#2563eb',
@@ -108,16 +123,21 @@ export default function Map({
       ))}
 
       {origin && (
-        <CircleMarker
-          center={[origin.lat, origin.lng]}
-          radius={8}
-          pathOptions={{
-            color: '#1d4ed8',
-            weight: 2,
-            fillColor: '#2563eb',
-            fillOpacity: 1,
+        <Marker
+          position={[origin.lat, origin.lng]}
+          icon={originIcon}
+          zIndexOffset={1000}
+          eventHandlers={{
+            click(event) {
+              L.DomEvent.stopPropagation(event)
+            },
           }}
-        />
+        >
+          <Popup>
+            <p className="m-0 font-medium">Vybrané místo</p>
+            <p className="m-0 text-xs text-gray-600">Výchozí bod 15minutové chůze</p>
+          </Popup>
+        </Marker>
       )}
 
       {onMapClick && <MapClickHandler onMapClick={onMapClick} />}

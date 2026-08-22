@@ -7,9 +7,11 @@ export class PoiError extends Error {
   }
 }
 
-function overpassUrl() {
-  return import.meta.env.DEV ? '/api/overpass' : 'https://overpass-api.de/api/interpreter'
-}
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+]
 
 function classifyTags(tags = {}) {
   const amenity = tags.amenity
@@ -40,8 +42,7 @@ function classifyTags(tags = {}) {
     railway === 'station' ||
     railway === 'halt' ||
     railway === 'tram_stop' ||
-    publicTransport === 'stop_position' ||
-    publicTransport === 'platform'
+    publicTransport === 'station'
   ) {
     return 'transit'
   }
@@ -64,19 +65,39 @@ function elementLatLng(element) {
 function buildQuery(bbox) {
   const box = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng}`
   return `
-[out:json][timeout:25];
+[out:json][timeout:40];
 (
-  nwr["amenity"~"^(school|kindergarten|college|university)$"](${box});
-  nwr["amenity"~"^(hospital|clinic|doctors|pharmacy)$"](${box});
-  nwr["amenity"~"^(restaurant|cafe|fast_food|pub|bar|bakery)$"](${box});
-  nwr["highway"="bus_stop"](${box});
-  nwr["railway"~"^(station|tram_stop|halt)$"](${box});
-  nwr["public_transport"~"^(stop_position|platform)$"](${box});
-  nwr["leisure"~"^(park|garden|playground)$"](${box});
-  nwr["landuse"="recreation_ground"](${box});
+  node["amenity"~"^(school|kindergarten|college|university|hospital|clinic|doctors|pharmacy|restaurant|cafe|fast_food|pub|bar|bakery)$"](${box});
+  way["amenity"~"^(school|kindergarten|college|university|hospital|clinic|pharmacy)$"](${box});
+  node["highway"="bus_stop"](${box});
+  node["railway"~"^(station|tram_stop|halt)$"](${box});
+  way["leisure"~"^(park|garden|playground)$"](${box});
+  node["leisure"="playground"](${box});
+  way["landuse"="recreation_ground"](${box});
 );
 out center;
 `.trim()
+}
+
+async function fetchOverpassJson(query, { signal } = {}) {
+  let lastStatus = 0
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal })
+      lastStatus = response.status
+      if (response.status === 429 || response.status === 502 || response.status === 504) continue
+      if (!response.ok) continue
+      return response.json()
+    } catch (err) {
+      if (err.name === 'AbortError') throw err
+    }
+  }
+
+  if (lastStatus === 429) {
+    throw new PoiError('OpenStreetMap je právě přetížený. Zkuste to za chvíli znovu.')
+  }
+  throw new PoiError('OpenStreetMap právě nevrátil body zájmu. Zkuste to znovu.')
 }
 
 export async function fetchPoisInIsochrone(geoJson, { signal } = {}) {
@@ -85,18 +106,7 @@ export async function fetchPoisInIsochrone(geoJson, { signal } = {}) {
     throw new PoiError('Isochrona nemá platný tvar pro hledání míst.')
   }
 
-  const response = await fetch(overpassUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-    body: new URLSearchParams({ data: buildQuery(bbox) }),
-    signal,
-  })
-
-  if (!response.ok) {
-    throw new PoiError('OpenStreetMap právě nevrátil body zájmu. Zkuste to znovu.')
-  }
-
-  const payload = await response.json()
+  const payload = await fetchOverpassJson(buildQuery(bbox), { signal })
   const seen = new Set()
   const pois = []
 
