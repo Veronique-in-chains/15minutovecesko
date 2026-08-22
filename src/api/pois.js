@@ -80,35 +80,25 @@ out center;
 }
 
 async function fetchOverpassJson(query, { signal } = {}) {
-  // Rozpoznáme, jestli jsme u vás na PC, nebo na Netlify
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
-  // Pro Netlify použijeme corsproxy.io, která ochranu Overpassu spolehlivě obejde
-  const baseUrl = 'https://overpass-api.de/api/interpreter';
-  const endpoint = isLocal ? baseUrl : `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`;
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: "data=" + encodeURIComponent(query),
-      signal
-    });
-    
-    if (response.status === 429 || response.status === 502 || response.status === 504) {
-      throw new Error('OpenStreetMap je právě přetížený. Zkuste to za chvíli znovu.');
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "data=" + encodeURIComponent(query),
+        signal
+      })
+      
+      if (response.status === 429 || response.status === 502 || response.status === 504) continue
+      if (!response.ok) continue
+      return response.json()
+    } catch (err) {
+      if (err.name === 'AbortError') throw err
     }
-    if (!response.ok) {
-      throw new Error('OpenStreetMap právě nevrátil body zájmu. Zkuste to znovu.');
-    }
-    
-    return response.json();
-  } catch (err) {
-    if (err.name === 'AbortError') throw err;
-    throw err;
   }
+  throw new Error('OpenStreetMap právě nevrátil body zájmu. Zkuste to znovu.')
 }
 
 export async function fetchPoisInIsochrone(geoJson, { signal } = {}) {
