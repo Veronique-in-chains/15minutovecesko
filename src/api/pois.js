@@ -64,19 +64,25 @@ function elementLatLng(element) {
 
 function buildQuery(bbox) {
   const box = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng}`
-  return `
-[out:json][timeout:40];
-(
-  node["amenity"~"^(school|kindergarten|college|university|hospital|clinic|doctors|pharmacy|restaurant|cafe|fast_food|pub|bar|bakery)$"](${box});
-  way["amenity"~"^(school|kindergarten|college|university|hospital|clinic|pharmacy)$"](${box});
-  node["highway"="bus_stop"](${box});
-  node["railway"~"^(station|tram_stop|halt)$"](${box});
-  way["leisure"~"^(park|garden|playground)$"](${box});
-  node["leisure"="playground"](${box});
-  way["landuse"="recreation_ground"](${box});
-);
-out center;
-`.trim()
+  return `[out:json][timeout:25][bbox:${box}];
+    (
+    // Vzdělání a zdravotnictví
+      nwr["amenity"~"^(school|kindergarten|college|university|hospital|clinic|doctors|pharmacy)$"];
+      
+    // Gastro a obchody
+      nwr["amenity"~"^(restaurant|cafe|fast_food|pub|bar)$"];
+      nwr["shop"="bakery"];
+      
+    // MHD
+      nwr["highway"="bus_stop"];
+      nwr["railway"~"^(station|tram_stop|halt)$"];
+      
+    // Zeleň a volný čas
+      nwr["leisure"~"^(park|garden|playground)$"];
+      nwr["landuse"="recreation_ground"];
+    );
+    out center;
+    `.trim()
 }
 
 async function fetchOverpassJson(query, { signal } = {}) {
