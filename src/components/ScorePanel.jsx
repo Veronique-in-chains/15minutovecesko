@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { POI_CATEGORIES } from '../score'
 
 function scoreTone(total) {
@@ -7,9 +8,23 @@ function scoreTone(total) {
 }
 
 export default function ScorePanel({ score, loading, empty }) {
+  // Stav pro mobilní zobrazení: je panel na mobilu zavřený? (výchozí je ne)
+  const [isMobileClosed, setIsMobileClosed] = useState(false)
+
+  // Pokaždé, když se začne načítat nové místo (loading) nebo přijdou nová data (score),
+  // panel na mobilu znovu automaticky otevřeme.
+  useEffect(() => {
+    setIsMobileClosed(false)
+  }, [score, loading])
+
+  // Základní CSS třídy pro obal panelu (přidali jsme 'relative' kvůli pozicování křížku)
+  // Pokud je panel na mobilu zavřený, přidáme 'hidden md:block' (zmizí na mobilu, na desktopu zůstane).
+  const baseClasses = "relative border-t border-gray-200 bg-white p-4 md:w-80 md:overflow-y-auto md:border-t-0 md:border-l"
+  const visibilityClass = isMobileClosed ? "hidden md:block" : "block"
+
   if (loading) {
     return (
-      <aside className="border-t border-gray-200 bg-white p-4 md:w-80 md:overflow-y-auto md:border-t-0 md:border-l">
+      <aside className={`${baseClasses} ${visibilityClass}`}>
         <p className="text-sm text-gray-600">Hledám školy, služby a zeleň v dosahu chůze…</p>
       </aside>
     )
@@ -17,7 +32,7 @@ export default function ScorePanel({ score, loading, empty }) {
 
   if (empty || !score) {
     return (
-      <aside className="border-t border-gray-200 bg-white p-4 md:w-80 md:overflow-y-auto md:border-t-0 md:border-l">
+      <aside className={`${baseClasses} ${visibilityClass}`}>
         <p className="text-sm text-gray-600">
           Klikněte do mapy. Ukážeme 15minutovou chůzi a skóre občanské vybavenosti.
         </p>
@@ -26,8 +41,20 @@ export default function ScorePanel({ score, loading, empty }) {
   }
 
   return (
-    <aside className="border-t border-gray-200 bg-white p-4 md:w-80 md:overflow-y-auto md:border-t-0 md:border-l">
-      <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">15minutové skóre</p>
+    <aside className={`${baseClasses} ${visibilityClass}`}>
+      
+      {/* Zavírací tlačítko - viditelné JEN na mobilu díky třídě 'md:hidden' */}
+      <button
+        onClick={() => setIsMobileClosed(true)}
+        className="md:hidden absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-700 transition-colors"
+        aria-label="Skrýt detaily"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <p className="text-xs font-medium tracking-wide text-gray-500 uppercase pr-8 md:pr-0">15minutové skóre</p>
       <p className={`mt-1 text-4xl font-semibold ${scoreTone(score.total)}`}>
         {score.total}
         <span className="ml-1 text-lg font-normal text-gray-400">/ {score.max}</span>
@@ -42,7 +69,7 @@ export default function ScorePanel({ score, loading, empty }) {
             </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full"
+                className="h-full rounded-full transition-all duration-500 ease-out"
                 style={{
                   width: `${(item.points / item.max) * 100}%`,
                   backgroundColor: item.color,

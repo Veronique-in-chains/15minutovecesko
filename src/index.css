@@ -35,3 +35,16 @@ body,
   white-space: nowrap;
   border: 0;
 }
+
+/* Vynucení viditelných systémových kurzorů pro mapu */
+.leaflet-container {
+  cursor: grab !important;
+}
+
+.leaflet-interactive {
+  cursor: pointer !important;
+}
+
+.leaflet-dragging .leaflet-container {
+  cursor: grabbing !important;
+}
